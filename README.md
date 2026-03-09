@@ -20,6 +20,20 @@ git lfs install
 
 All files in `models/` are tracked by LFS via `.gitattributes`.
 
+## Create GitHub Repository (No `gh` Required)
+
+Use a GitHub personal access token (PAT) with repo permissions:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\create_github_repo.ps1 -RepoName YOUR_REPO -Visibility public -Token YOUR_GITHUB_TOKEN
+```
+
+Optional:
+
+- `-Owner your-org-or-username`
+- `-Description "your text"`
+- `-Visibility private`
+
 ## Add a Model from Local Path
 
 Register a model folder or single file from local disk:
