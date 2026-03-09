@@ -46,6 +46,9 @@ Optional flags:
 
 - `-Description "short note"`
 - `-Overwrite` (replace existing model with same name)
+- `-ChunkSizeMB 1900` (for >2GB files; defaults to 1900)
+
+When a source file is larger than GitHub LFS single-object limit, the script automatically splits it into `.partNNNN` files and writes `_split_manifest.json`.
 
 Then commit and push:
 
@@ -74,6 +77,12 @@ What this script does:
 1. `git clone --depth 1 --filter=blob:none --sparse`
 2. sparse checkout to `models/MODEL_NAME`
 3. `git lfs pull` only for that model path
+4. auto-assemble chunked `.partNNNN` files back to original model file (if `_split_manifest.json` exists)
+
+Optional flags:
+
+- `-SkipAssemble` (download chunks only, do not merge)
+- `-KeepChunks` (after merge, keep `.partNNNN` files)
 
 ## Notes
 

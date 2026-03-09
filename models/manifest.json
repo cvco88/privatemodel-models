@@ -1,1 +1,52 @@
-[]
+﻿{
+    "version":  1,
+    "updated_at_utc":  "2026-03-09T08:48:13.2619507Z",
+    "models":  [
+                   {
+                       "name":  "wan2.2_i2v_low_noise_14B_fp8_scaled",
+                       "path":  "models/wan2.2_i2v_low_noise_14B_fp8_scaled",
+                       "description":  "WAN 2.2 i2v low noise 14B fp8 scaled",
+                       "file_count":  9,
+                       "total_size_bytes":  14294744148,
+                       "files":  [
+                                     {
+                                         "path":  "_split_manifest.json",
+                                         "size_bytes":  1316
+                                     },
+                                     {
+                                         "path":  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors.part0001",
+                                         "size_bytes":  1992294400
+                                     },
+                                     {
+                                         "path":  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors.part0002",
+                                         "size_bytes":  1992294400
+                                     },
+                                     {
+                                         "path":  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors.part0003",
+                                         "size_bytes":  1992294400
+                                     },
+                                     {
+                                         "path":  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors.part0004",
+                                         "size_bytes":  1992294400
+                                     },
+                                     {
+                                         "path":  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors.part0005",
+                                         "size_bytes":  1992294400
+                                     },
+                                     {
+                                         "path":  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors.part0006",
+                                         "size_bytes":  1992294400
+                                     },
+                                     {
+                                         "path":  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors.part0007",
+                                         "size_bytes":  1992294400
+                                     },
+                                     {
+                                         "path":  "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors.part0008",
+                                         "size_bytes":  348682032
+                                     }
+                                 ],
+                       "updated_at_utc":  "2026-03-09T08:48:13.2619507Z"
+                   }
+               ]
+}

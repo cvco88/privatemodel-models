@@ -16,7 +16,11 @@ param(
 
     [switch]$Overwrite,
 
-    [switch]$KeepTemp
+    [switch]$KeepTemp,
+
+    [switch]$KeepChunks,
+
+    [switch]$SkipAssemble
 )
 
 Set-StrictMode -Version Latest
@@ -46,7 +50,7 @@ function Load-ManifestModels {
         return @()
     }
 
-    $parsed = $raw | ConvertFrom-Json -Depth 100
+    $parsed = $raw | ConvertFrom-Json
     if ($parsed -is [System.Array]) {
         return @($parsed)
     }
@@ -58,12 +62,118 @@ function Load-ManifestModels {
     return @($parsed.models)
 }
 
+function Load-SplitManifestEntries {
+    param([Parameter(Mandatory = $true)][string]$SplitManifestPath)
+
+    if (-not (Test-Path -LiteralPath $SplitManifestPath)) {
+        return @()
+    }
+
+    $raw = Get-Content -LiteralPath $SplitManifestPath -Raw
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        return @()
+    }
+
+    $parsed = $raw | ConvertFrom-Json
+    if ($parsed -is [System.Array]) {
+        return @($parsed)
+    }
+
+    if ($null -eq $parsed.files) {
+        return @()
+    }
+
+    return @($parsed.files)
+}
+
+function Assemble-SplitFiles {
+    param(
+        [Parameter(Mandatory = $true)][string]$ModelDir,
+        [switch]$KeepChunks
+    )
+
+    $splitManifestPath = Join-Path $ModelDir "_split_manifest.json"
+    $entries = Load-SplitManifestEntries -SplitManifestPath $splitManifestPath
+    if ($entries.Count -eq 0) {
+        return 0
+    }
+
+    $assembledCount = 0
+    $buffer = New-Object byte[] (8MB)
+
+    foreach ($entry in $entries) {
+        if (-not ($entry.PSObject.Properties.Name -contains "original_path")) {
+            continue
+        }
+        if (-not ($entry.PSObject.Properties.Name -contains "chunks")) {
+            continue
+        }
+
+        $originalRel = [string]$entry.original_path
+        $targetFile = Join-Path $ModelDir ($originalRel -replace '/', '\')
+        $targetParent = Split-Path -Parent $targetFile
+        if (-not (Test-Path -LiteralPath $targetParent)) {
+            New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
+        }
+
+        if (Test-Path -LiteralPath $targetFile) {
+            Remove-Item -LiteralPath $targetFile -Force
+        }
+
+        $output = [System.IO.File]::Open($targetFile, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+        try {
+            foreach ($chunkRel in @($entry.chunks)) {
+                $chunkPath = Join-Path $ModelDir (($chunkRel.ToString()) -replace '/', '\')
+                if (-not (Test-Path -LiteralPath $chunkPath)) {
+                    throw "Missing chunk file: $chunkRel"
+                }
+
+                $input = [System.IO.File]::OpenRead($chunkPath)
+                try {
+                    while ($true) {
+                        $read = $input.Read($buffer, 0, $buffer.Length)
+                        if ($read -le 0) {
+                            break
+                        }
+                        $output.Write($buffer, 0, $read)
+                    }
+                }
+                finally {
+                    $input.Dispose()
+                }
+            }
+        }
+        finally {
+            $output.Dispose()
+        }
+
+        if ($entry.PSObject.Properties.Name -contains "original_size_bytes") {
+            $actual = (Get-Item -LiteralPath $targetFile).Length
+            if ([int64]$actual -ne [int64]$entry.original_size_bytes) {
+                throw "Assembled file size mismatch for '$originalRel'. Expected $($entry.original_size_bytes), got $actual."
+            }
+        }
+
+        if (-not $KeepChunks) {
+            foreach ($chunkRel in @($entry.chunks)) {
+                $chunkPath = Join-Path $ModelDir (($chunkRel.ToString()) -replace '/', '\')
+                if (Test-Path -LiteralPath $chunkPath) {
+                    Remove-Item -LiteralPath $chunkPath -Force
+                }
+            }
+        }
+
+        $assembledCount++
+    }
+
+    return $assembledCount
+}
+
 Invoke-Checked -Exe "git" -Args @("--version")
 Invoke-Checked -Exe "git" -Args @("lfs", "version")
 
 $repoUrl = "https://github.com/$Repo.git"
 $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("model-download-" + [System.Guid]::NewGuid().ToString("N"))
-$outputRoot = (Resolve-Path -LiteralPath "." ).Path
 if (-not (Test-Path -LiteralPath $Output)) {
     New-Item -ItemType Directory -Path $Output -Force | Out-Null
 }
@@ -135,10 +245,18 @@ try {
         Copy-Item -LiteralPath $child.FullName -Destination $destModelDir -Recurse -Force
     }
 
+    $assembledCount = 0
+    if (-not $SkipAssemble) {
+        $assembledCount = Assemble-SplitFiles -ModelDir $destModelDir -KeepChunks:$KeepChunks
+    }
+
     Write-Host "Model '$Model' downloaded successfully."
     Write-Host "Repository : $Repo"
     Write-Host "Reference  : $Ref"
     Write-Host "Output path: $destModelDir"
+    if (-not $SkipAssemble) {
+        Write-Host "Assembled split files: $assembledCount"
+    }
 }
 finally {
     if (-not $KeepTemp -and (Test-Path -LiteralPath $tempDir)) {
