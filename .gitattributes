@@ -1,0 +1,2 @@
+models/** filter=lfs diff=lfs merge=lfs -text
+models/manifest.json -filter -diff -merge text
